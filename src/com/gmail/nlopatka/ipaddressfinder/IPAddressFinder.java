@@ -18,14 +18,17 @@ public class IPAddressFinder {
 		if (ip == null) {
 			return null;
 		} else {
-			HttpClient client = new DefaultHttpClient();
-			String url = String.format("http://freegeoip.net/json/%s", ip);
-			HttpGet request = new HttpGet(url);			
 			try {
+				HttpClient client = new DefaultHttpClient();
+				String url = String.format("http://freegeoip.net/json/%s", ip);
+				HttpGet request = new HttpGet(url);
 				HttpResponse response = client.execute(request);
 				return EntityUtils.toString(response.getEntity());
 			} catch (IOException e) {
 				Log.e(TAG, "Could not execute HTTP GET: " + e.getMessage());
+				return null;
+			} catch (IllegalArgumentException e) {
+				Log.e(TAG, "Wrong IP "+ip+" : " + e.getMessage());
 				return null;
 			}
 		}		
