@@ -8,6 +8,8 @@ import org.json.JSONException;
 import org.json.JSONObject;
 
 import android.content.Context;
+import android.content.Intent;
+import android.net.Uri;
 import android.os.AsyncTask;
 import android.os.Bundle;
 import android.support.v7.app.ActionBarActivity;
@@ -23,10 +25,12 @@ import android.widget.ListAdapter;
 import android.widget.ListView;
 
 public class MainActivity extends ActionBarActivity {
+	private static final String SAVED_GEO_LOCATION = "geo-location";
 	private static final String TAG = "MainActivity";
 	private ListView infoList;
 	private EditText editIP;
 	private IpLocationFinderAsync finderTask;
+	private GeoLocation geoLocation;	
 
 	@Override
 	protected void onCreate(Bundle savedInstanceState) {
@@ -37,14 +41,69 @@ public class MainActivity extends ActionBarActivity {
 		
 		getWindow().setSoftInputMode(
 			      WindowManager.LayoutParams.SOFT_INPUT_STATE_ALWAYS_HIDDEN);
+		
+		if (savedInstanceState == null) {
+			finderTask = new IpLocationFinderAsync();
+			finderTask.execute("");
+		} else {
+			geoLocation = (GeoLocation) savedInstanceState.getSerializable(SAVED_GEO_LOCATION);
+			if (geoLocation != null) {
+				infoList.setAdapter(createListAdapter(geoLocation));
+			}
+		}
+		
+		Log.d(TAG, "onCreate");
 	}
 	
 	@Override
-	protected void onResume() {				
-		super.onResume();
-		finderTask = new IpLocationFinderAsync();
-		finderTask.execute("");
+	protected void onRestoreInstanceState(Bundle savedInstanceState) {
+		Log.d(TAG, "onRestoreInstanceState");
+		super.onRestoreInstanceState(savedInstanceState);
 	}
+	
+	@Override
+	protected void onStart() {
+		Log.d(TAG, "onStart");
+		super.onStart();
+	}
+	
+	@Override
+	protected void onResume() {
+		Log.d(TAG, "onResume");
+		super.onResume();
+	}
+	
+	@Override
+	protected void onSaveInstanceState(Bundle outState) {
+		Log.d(TAG, "onSaveInstanceState");
+		if(geoLocation != null) {
+			outState.putSerializable(SAVED_GEO_LOCATION, geoLocation);
+		}
+		super.onSaveInstanceState(outState);
+	}
+	
+	@Override
+	protected void onPause() {
+		Log.d(TAG, "onPause");
+		super.onPause();
+	}
+	
+	@Override
+	protected void onStop() {
+		Log.d(TAG, "onStop");
+		if (finderTask != null) {
+			finderTask.cancel(true);
+			finderTask = null;
+		}
+		super.onStop();
+	}
+	
+	@Override
+	protected void onDestroy() {
+		Log.d(TAG, "onDestroy");
+		super.onDestroy();
+	}
+	
 
 	@Override
 	public boolean onCreateOptionsMenu(Menu menu) {
@@ -74,13 +133,25 @@ public class MainActivity extends ActionBarActivity {
 		infoList.setAdapter(adapter);
 	}
 	
+	private ListAdapter createListAdapter(GeoLocation location) {
+		List<String> items;
+		items = geoLocation.toStringList();
+		
+		return new ArrayAdapter<>(getApplicationContext(), android.R.layout.simple_list_item_1,items);
+	}
+	
 	private class IpLocationFinderAsync extends AsyncTask<String, String, String>
 	{
 
 		@Override
 		protected String doInBackground(String... params) {
-			// TODO Auto-generated method stub
-			return IPAddressFinder.findIPLocation(params[0]);
+			String ip = params[0];
+			if (!Util.isIPAddress(ip) && !ip.equals("")){
+				ip = Util.resolveURL(ip);
+				if(ip == null)
+					return null;
+			}
+			return IPAddressFinder.findIPLocation(ip);
 		}
 		
 		@Override
@@ -88,27 +159,15 @@ public class MainActivity extends ActionBarActivity {
 			finderTask = null;
 			if(result == null) {
 				displaySearchError();
-			} else {
-				JSONObject json;
-				ListAdapter adapter;
-				try {
-					List<String> items = new ArrayList<String>();
-					json = new JSONObject(result);
-					Iterator<String> keysIterator = json.keys();
-					while(keysIterator.hasNext()) {
-						String key = keysIterator.next();
-						String val = json.optString(key);
-						if(!val.equals("")) {
-							items.add(String.format("%s: %s", key, val));
-						}
-					}					
-					adapter = new ArrayAdapter<>(getApplicationContext(), android.R.layout.simple_list_item_1,items);
-					infoList.setAdapter(adapter);
-				} catch (JSONException e) {
-					Log.e(TAG, "Could not parse JSON:" + e.getMessage());
+				geoLocation = null;
+			} else {				
+				geoLocation = GeoLocation.createFromJSON(result);
+				if (geoLocation == null) {
+					Log.e(TAG, "Could not parse json: " + result);
 					displaySearchError();
 					return;
-				}				
+				}
+				infoList.setAdapter(createListAdapter(geoLocation));					
 			}
 			super.onPostExecute(result);			
 		}		
@@ -119,12 +178,29 @@ public class MainActivity extends ActionBarActivity {
 		case R.id.bsearch:
 			onBSearchPressed();
 			break;
+		case R.id.bmaps:
+			onBMapsPressed();
+			break;
 		default:
 			Log.e(TAG, "OnClick: Could not find id " + v.getId());
 			break;
 		}
 	}
 	
+	private void onBMapsPressed() {		
+		if (geoLocation != null && geoLocation.latitude != null
+				&& geoLocation.longitude != null) {
+			String geo;
+			Intent intent = new Intent(Intent.ACTION_VIEW);
+			geo = String.format("geo:0,0?q=%f,%f(%s)", (double)geoLocation.latitude,
+					(double)geoLocation.longitude, geoLocation.ip);
+			intent.setData(Uri.parse(geo));
+			if (intent.resolveActivity(getPackageManager()) != null) {
+				startActivity(intent);
+			}
+		}
+	}
+
 	private void hideKeyBoard()
 	{
 		editIP.clearFocus();
