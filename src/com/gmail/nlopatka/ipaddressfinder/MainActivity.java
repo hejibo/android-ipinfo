@@ -1,11 +1,6 @@
 package com.gmail.nlopatka.ipaddressfinder;
 
-import java.util.ArrayList;
-import java.util.Iterator;
 import java.util.List;
-
-import org.json.JSONException;
-import org.json.JSONObject;
 
 import android.content.Context;
 import android.content.Intent;
@@ -49,6 +44,8 @@ public class MainActivity extends ActionBarActivity {
 			geoLocation = (GeoLocation) savedInstanceState.getSerializable(SAVED_GEO_LOCATION);
 			if (geoLocation != null) {
 				infoList.setAdapter(createListAdapter(geoLocation));
+			} else {
+				displaySearchError();
 			}
 		}
 		
@@ -104,7 +101,12 @@ public class MainActivity extends ActionBarActivity {
 		super.onDestroy();
 	}
 	
-
+	@Override
+	public void onBackPressed() {		
+		hideKeyBoardIfVisible();
+		super.onBackPressed();
+	}
+	
 	@Override
 	public boolean onCreateOptionsMenu(Menu menu) {
 		// Inflate the menu; this adds items to the action bar if it is present.
@@ -201,17 +203,19 @@ public class MainActivity extends ActionBarActivity {
 		}
 	}
 
-	private void hideKeyBoard()
+	private void hideKeyBoardIfVisible()
 	{
 		editIP.clearFocus();
-		infoList.requestFocus();
+		infoList.requestFocus();		
 		InputMethodManager imm = (InputMethodManager) getSystemService(Context.INPUT_METHOD_SERVICE);
-		imm.hideSoftInputFromInputMethod(editIP.getWindowToken(), 0);
+		if (imm.isAcceptingText()) {
+			imm.toggleSoftInput(0, 0);
+		}
 	}
 
 	private void onBSearchPressed() {
 		String address = editIP.getText().toString().trim();		
-		hideKeyBoard();	
+		hideKeyBoardIfVisible();	
 		Log.d(TAG, "Start searching location of " + address);
 		if (finderTask != null) {
 			finderTask.cancel(true);
