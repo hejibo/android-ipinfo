@@ -39,12 +39,26 @@
         android:layout_height="wrap_content"
         android:layout_below="@id/search_layout"
         android:layout_centerHorizontal="true"
-        android:onClick="onClick"/>
+        android:onClick="onClick"
+        android:visibility="gone"/>
 
-    <ListView
+    <FrameLayout
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:layout_below="@id/bmaps">
+    <TextView
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:text="@string/find_error"
+        android:id="@+id/main_error_field"
+        android:visibility="invisible"/>
+        
+        
+    <ExpandableListView
         android:id="@+id/info"
         android:layout_width="match_parent"
         android:layout_height="match_parent"
-        android:layout_below="@id/bmaps" />
+        android:childDivider="@android:color/transparent"/>
+    </FrameLayout>
 
 </RelativeLayout>

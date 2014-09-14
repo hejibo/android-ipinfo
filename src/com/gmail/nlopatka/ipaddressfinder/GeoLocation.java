@@ -13,6 +13,8 @@ public class GeoLocation implements Serializable{
 	private static final long serialVersionUID = 1L;
 	private static final String TAG = "GeoLocation";
 	
+	private List<String> listRepresentation;
+	
 	public String ip;
 	public Double latitude;
 	public Double longitude;
@@ -23,7 +25,7 @@ public class GeoLocation implements Serializable{
 	public String city;
 	public String zipcode;
 	public String metro_code;
-	public String area_code;
+	public String area_code;	
 	
 	public static GeoLocation createFromJSON (String json) {		
 		try {
@@ -54,27 +56,32 @@ public class GeoLocation implements Serializable{
 		}		
 	}
 	
-	public List<String> toStringList()
+	public List<String> getAsStringList(boolean update)
 	{
-		List<String> list = new ArrayList<String>();
+		if (!update && listRepresentation != null) {
+			return listRepresentation;
+		}
+		
+		listRepresentation = new ArrayList<String>();
+		
 		if (this.ip != null && !this.ip.equals("")) {
-			list.add(String.format("ip: %s",this.ip));
+			listRepresentation.add(String.format("ip: %s",this.ip));
 		}
 		if (this.country_name != null && !this.country_name.equals("")) {
-			list.add(String.format("county name: %s",this.country_name));
+			listRepresentation.add(String.format("county name: %s",this.country_name));
 		}
 		if (this.region_name != null && !this.region_name.equals("")) {
-			list.add(String.format("region name: %s",this.region_name));
+			listRepresentation.add(String.format("region name: %s",this.region_name));
 		}
 		if (this.city != null && !this.city.equals("")) {
-			list.add(String.format("city: %s",this.city));
+			listRepresentation.add(String.format("city: %s",this.city));
 		}
 		if (this.longitude != null) {
-			list.add(String.format("longitude: %f",this.longitude));
+			listRepresentation.add(String.format("longitude: %f",this.longitude));
 		}
 		if (this.latitude != null) {
-			list.add(String.format("latitude: %f",this.latitude));
+			listRepresentation.add(String.format("latitude: %f",this.latitude));
 		}
-		return list;
+		return listRepresentation;
 	}
 }
