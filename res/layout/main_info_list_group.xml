@@ -23,7 +23,7 @@
         android:layout_height="wrap_content"
         android:src="@android:drawable/ic_menu_mapmode"
         android:layout_alignParentRight="true"
-        android:focusable="false"              
+        android:focusable="false"               
         />
 	
 </RelativeLayout>

@@ -4,6 +4,7 @@ import java.util.ArrayList;
 
 import android.content.Context;
 import android.content.Intent;
+import android.graphics.drawable.Drawable;
 import android.net.Uri;
 import android.os.AsyncTask;
 import android.os.Bundle;
@@ -15,10 +16,10 @@ import android.view.View;
 import android.view.View.OnClickListener;
 import android.view.WindowManager;
 import android.view.inputmethod.InputMethodManager;
-import android.widget.ArrayAdapter;
 import android.widget.EditText;
 import android.widget.ExpandableListView;
-import android.widget.ListAdapter;
+import android.widget.ImageButton;
+import android.widget.ProgressBar;
 import android.widget.TextView;
 
 public class MainActivity extends ActionBarActivity implements OnClickListener{
@@ -29,14 +30,22 @@ public class MainActivity extends ActionBarActivity implements OnClickListener{
 	private IpLocationFinderAsync finderTask;
 	private ArrayList<GeoLocation> geoLocations = new ArrayList<GeoLocation>();
 	private TextView errorField;
+	private ProgressBar progressBar;
+	private ImageButton searchButton;
+	private Drawable searchDrawable;
+	private Drawable cancelDrawable;
 
 	@Override
 	protected void onCreate(Bundle savedInstanceState) {
 		super.onCreate(savedInstanceState);		
 		setContentView(R.layout.activity_main);
+		searchButton = (ImageButton)findViewById(R.id.bsearch);
+		searchDrawable = getResources().getDrawable(android.R.drawable.ic_menu_search);
+		cancelDrawable = getResources().getDrawable(android.R.drawable.ic_menu_close_clear_cancel);
 		infoList = (ExpandableListView)findViewById(R.id.info);
 		editIP = (EditText)findViewById(R.id.edit_ip);
 		errorField = (TextView) findViewById(R.id.main_error_field);
+		progressBar = (ProgressBar) findViewById(R.id.main_progress_bar);
 		
 		getWindow().setSoftInputMode(
 			      WindowManager.LayoutParams.SOFT_INPUT_STATE_ALWAYS_HIDDEN);
@@ -116,16 +125,12 @@ public class MainActivity extends ActionBarActivity implements OnClickListener{
 	
 	@Override
 	public boolean onCreateOptionsMenu(Menu menu) {
-		// Inflate the menu; this adds items to the action bar if it is present.
 		getMenuInflater().inflate(R.menu.main, menu);
 		return true;
 	}
 
 	@Override
 	public boolean onOptionsItemSelected(MenuItem item) {
-		// Handle action bar item clicks here. The action bar will
-		// automatically handle clicks on the Home/Up button, so long
-		// as you specify a parent activity in AndroidManifest.xml.
 		int id = item.getItemId();
 		if (id == R.id.action_settings) {
 			return true;
@@ -139,9 +144,28 @@ public class MainActivity extends ActionBarActivity implements OnClickListener{
 		infoList.setVisibility(View.INVISIBLE);		
 	}
 	
+	private void refreshScreen (boolean isLoading) {
+		if (isLoading) {
+			progressBar.setVisibility(View.VISIBLE);
+			searchButton.setImageDrawable(cancelDrawable);
+		} else {
+			progressBar.setVisibility(View.INVISIBLE);
+			searchButton.setImageDrawable(searchDrawable);
+		}
+	}
+	
+	private boolean isWorking ()
+	{
+		return progressBar.getVisibility() == View.VISIBLE;
+	}
+	
 	private class IpLocationFinderAsync extends AsyncTask<String, String, String[]>
 	{
-
+		@Override
+		protected void onPreExecute() {
+			refreshScreen(true);
+			super.onPreExecute();
+		}
 		@Override
 		protected String[] doInBackground(String... params) {
 			String ip = params[0];
@@ -155,6 +179,8 @@ public class MainActivity extends ActionBarActivity implements OnClickListener{
 				
 				res = new String[addresses.length];				
 				for(String addr:addresses) {
+					if(isCancelled())
+						break;
 					res[i++] = IPAddressFinder.findIPLocation(addr);
 				}
 				return res;
@@ -164,7 +190,14 @@ public class MainActivity extends ActionBarActivity implements OnClickListener{
 		}
 		
 		@Override
+		protected void onCancelled() {
+			refreshScreen(false);
+			super.onCancelled();
+		}
+		
+		@Override
 		protected void onPostExecute(String[] results) {
+			refreshScreen(false);
 			finderTask = null;
 			geoLocations.clear();
 			if(results == null) {
@@ -185,6 +218,9 @@ public class MainActivity extends ActionBarActivity implements OnClickListener{
 					return;
 				}
 				infoList.setAdapter(new InfoListAdapter(geoLocations, MainActivity.this));
+				if (results.length == 1) {
+					infoList.expandGroup(0);
+				}
 				errorField.setVisibility(View.INVISIBLE);
 				infoList.setVisibility(View.VISIBLE);
 			}
@@ -245,20 +281,29 @@ public class MainActivity extends ActionBarActivity implements OnClickListener{
 
 	private void hideKeyBoardIfVisible()
 	{
+		InputMethodManager imm = (InputMethodManager) getSystemService(Context.INPUT_METHOD_SERVICE);
+		//imm.toggleSoftInput(0, 0);
+		//imm.hideSoftInputFromInputMethod(editIP.getWindowToken(), 0);
+		
+		imm.hideSoftInputFromWindow(editIP.getWindowToken(), 0);
 		editIP.clearFocus();
 		infoList.requestFocus();		
-		InputMethodManager imm = (InputMethodManager) getSystemService(Context.INPUT_METHOD_SERVICE);
-		imm.toggleSoftInput(0, 0);
 	}
 
 	private void onBSearchPressed() {
-		String address = editIP.getText().toString().trim();		
-		hideKeyBoardIfVisible();	
-		Log.d(TAG, "Start searching location of " + address);
+		boolean wasWorking = isWorking(); 
+		
 		if (finderTask != null) {
 			finderTask.cancel(true);
+			finderTask = null;
 		}
-		finderTask = new IpLocationFinderAsync();
-		finderTask.execute(address);
+		
+		if (!wasWorking) {
+			String address = editIP.getText().toString().trim();		
+			hideKeyBoardIfVisible();	
+			Log.d(TAG, "Start searching location of " + address);			
+			finderTask = new IpLocationFinderAsync();
+			finderTask.execute(address);
+		}
 	}
 }
